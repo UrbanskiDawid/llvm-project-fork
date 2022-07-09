@@ -3158,6 +3158,19 @@ the configuration (without a prefix: ``Auto``).
        });
 
 
+**SpaceBeforeAndAfterOperator** (``SpaceBeforeAndAfterOperatorKind``) :versionbadge:`clang-format 16`
+  Adding spaces before and after operatos.
+  Possible values:
+
+  * ``SBAO_None`` (in configuration: ``None``)
+    Dont change any operators.
+    .. code-block:: c++
+       a==b
+
+  * ``SBAO_SpaceBeforeAndAfter`` (in configuration: ``SpaceBeforeAndAfter``)
+    Add space before and after operators.
+    .. code-block:: c++
+       a == b
 
 **Language** (``LanguageKind``) :versionbadge:`clang-format 3.5`
   Language, this format style is targeted at.

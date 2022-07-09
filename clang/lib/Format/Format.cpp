@@ -91,6 +91,15 @@ template <> struct ScalarEnumerationTraits<FormatStyle::LanguageStandard> {
 };
 
 template <>
+struct ScalarEnumerationTraits<FormatStyle::SpaceBeforeAndAfterOperatorKind> {
+  static void enumeration(IO &IO,
+                          FormatStyle::SpaceBeforeAndAfterOperatorKind &Value) {
+    IO.enumCase(Value, "None", FormatStyle::SBAO_None);
+    IO.enumCase(Value, "SpaceBeforeAndAfter", FormatStyle::SBAO_SpaceBeforeAndAfter);
+  }
+};
+
+template <>
 struct ScalarEnumerationTraits<FormatStyle::LambdaBodyIndentationKind> {
   static void enumeration(IO &IO,
                           FormatStyle::LambdaBodyIndentationKind &Value) {
@@ -817,6 +826,7 @@ template <> struct MappingTraits<FormatStyle> {
     IO.mapOptional("KeepEmptyLinesAtTheStartOfBlocks",
                    Style.KeepEmptyLinesAtTheStartOfBlocks);
     IO.mapOptional("LambdaBodyIndentation", Style.LambdaBodyIndentation);
+    IO.mapOptional("SpaceBeforeAndAfterOperator", Style.SpaceBeforeAndAfterOperator);
     IO.mapOptional("MacroBlockBegin", Style.MacroBlockBegin);
     IO.mapOptional("MacroBlockEnd", Style.MacroBlockEnd);
     IO.mapOptional("MaxEmptyLinesToKeep", Style.MaxEmptyLinesToKeep);
@@ -2206,6 +2216,101 @@ private:
   }
 };
 
+/// InsertSpaceBeforeAndAfterOperator inserts space before and after given operators.
+/// E.g.:
+/// before: x==y
+/// after:  x == y
+class InsertSpaceBeforeAndAfterOperator : public TokenAnalyzer {
+public:
+  InsertSpaceBeforeAndAfterOperator(const Environment &Env, const FormatStyle &Style)
+      : TokenAnalyzer(Env, Style) {}
+
+  std::pair<tooling::Replacements, unsigned>
+  analyze(TokenAnnotator &Annotator,
+          SmallVectorImpl<AnnotatedLine *> &AnnotatedLines,
+          FormatTokenLexer &Tokens) override {
+
+    llvm::errs() << "InsertSpaceBeforeAndAfterOperator enabled\n";
+
+    AffectedRangeMgr.computeAffectedLines(AnnotatedLines);
+    tooling::Replacements Result;
+    insertSpacerArroundOperators(AnnotatedLines, Result);
+    return {Result, 0};
+  }
+
+private:
+  /// Inserts ' ' before and after operators example '==' > ' == '.
+  void insertSpacerArroundOperators(SmallVectorImpl<AnnotatedLine *> &Lines,
+                                    tooling::Replacements &Result) {
+    for (AnnotatedLine *Line : Lines) {
+      insertSpacerArroundOperators(Line->Children, Result);
+      if (!Line->Affected)
+        continue;
+
+      for (FormatToken *FormatTok = Line->First;
+           FormatTok;
+           FormatTok = FormatTok->Next)
+      {
+//isUnaryOperator
+        if( FormatTok->isOneOf(
+          //== (from TokenKinds.def)
+          tok::ampequal,//&=
+          tok::starequal,//*=
+          tok::plusequal,//+=
+          tok::minusequal,//-=
+          tok::exclaimequal,//!=
+          tok::slashequal,///=
+          tok::percentequal,//%=
+          tok::lessequal,//<=
+          tok::greaterequal,//>=
+          tok::equalequal,//==
+          tok::caretequal,//^=
+          tok::pipeequal//|=
+          ) )
+        {
+          insertSpacesArroundToken(FormatTok, Result);
+        }
+      }
+    }
+  }
+
+  void insertSpacesArroundToken(format::FormatToken *FormatTok, tooling::Replacements &Result) {
+
+        bool SpaceBefore = FormatTok->hasWhitespaceBefore();
+        bool SpaceAfter = FormatTok->Next->hasWhitespaceBefore();
+    llvm::errs()<< "insertSpacesArroundToken: before:"<< SpaceBefore<<",after:"<<SpaceAfter <<"\n";
+    SpaceAfter=false;
+    SpaceBefore=false;
+        if(SpaceBefore && SpaceAfter)
+        {
+          llvm::errs()<< "insertSpacesArroundToken: skiped\n";
+          return;
+        }
+        // getEndLoc is not reliably set during re-lexing, use text length
+        // instead.
+        SourceLocation Start = FormatTok->Tok.getLocation();
+        SourceLocation End = FormatTok->Tok.getLocation().getLocWithOffset(FormatTok->TokenText.size());
+
+        llvm::errs()<< "insertSpacesArroundToken: s:"<< Start.isValid()<<",e:"<<End.isValid()<<"\n";
+
+        //prefix
+        auto prefixSR = CharSourceRange::getCharRange(
+          FormatTok->WhitespaceRange.getBegin(),
+          FormatTok->Tok.getLocation()
+        );
+        std::string prefixText = std::string("dupa>");
+        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), prefixSR, prefixText)));
+
+        //suffix
+        auto suffixSR = CharSourceRange::getCharRange(
+          FormatTok->Tok.getLocation().getLocWithOffset(FormatTok->TokenText.size()),
+          FormatTok->Next->Tok.getLocation()
+        );
+        std::string suffixText = std::string("<dupa");
+        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), suffixSR, suffixText)));
+  }
+};
+
 // This class clean up the erroneous/redundant code around the given ranges in
 // file.
 class Cleaner : public TokenAnalyzer {
@@ -3306,6 +3411,14 @@ reformat(const FormatStyle &Style, StringRef Code,
       Style.InsertTrailingCommas == FormatStyle::TCS_Wrapped) {
     Passes.emplace_back([&](const Environment &Env) {
       return TrailingCommaInserter(Env, Expanded).process();
+    });
+  }
+
+//EDAWURB
+  if (Style.SpaceBeforeAndAfterOperator != FormatStyle::SBAO_None){
+    Passes.emplace_back([&](const Environment &Env) {
+          return InsertSpaceBeforeAndAfterOperator(Env, Expanded)
+              .process();
     });
   }
 

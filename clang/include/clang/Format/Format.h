@@ -2605,6 +2605,19 @@ struct FormatStyle {
   /// \version 3.5
   LanguageKind Language;
 
+  // Suported operator spacing options.
+  enum SpaceBeforeAndAfterOperatorKind: int8_t
+  {
+    /// Do not use.
+    SBAO_None,
+    /// Use space before and after operators.
+    SBAO_SpaceBeforeAndAfter
+  };
+
+  /// Whitespace logic for surrounding operators.
+  /// \version 16.0
+  SpaceBeforeAndAfterOperatorKind SpaceBeforeAndAfterOperator;
+
   /// Indentation logic for lambda bodies.
   enum LambdaBodyIndentationKind : int8_t {
     /// Align lambda body relative to the lambda signature. This is the default.
@@ -3923,6 +3936,7 @@ struct FormatStyle {
            KeepEmptyLinesAtTheStartOfBlocks ==
                R.KeepEmptyLinesAtTheStartOfBlocks &&
            LambdaBodyIndentation == R.LambdaBodyIndentation &&
+           SpaceBeforeAndAfterOperator == R.SpaceBeforeAndAfterOperator &&
            MacroBlockBegin == R.MacroBlockBegin &&
            MacroBlockEnd == R.MacroBlockEnd &&
            MaxEmptyLinesToKeep == R.MaxEmptyLinesToKeep &&

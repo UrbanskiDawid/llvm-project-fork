@@ -20727,6 +20727,9 @@ TEST_F(FormatTest, ParsesConfiguration) {
               BreakBeforeConceptDeclarations, FormatStyle::BBCDS_Always);
   CHECK_PARSE("BreakBeforeConceptDeclarations: false",
               BreakBeforeConceptDeclarations, FormatStyle::BBCDS_Allowed);
+
+  CHECK_PARSE("SpaceBeforeAndAfterOperator: SpaceBeforeAndAfter",
+              SpaceBeforeAndAfterOperator, FormatStyle::SBAO_SpaceBeforeAndAfter);
 }
 
 TEST_F(FormatTest, ParsesConfigurationWithLanguages) {
@@ -22080,6 +22083,11 @@ TEST_F(FormatTest, FormatsLambdas) {
                "  }).foo();\n"
                "}",
                Style);
+  //EDAWURB: broken on purpose dont know how to run this test
+  Style.SpaceBeforeAndAfterOperator = FormatStyle::SBAO_SpaceBeforeAndAfter;
+  EXPECT_EQ("x ==! y",
+            format("x==y",
+                   Style));
   verifyFormat("test() {\n"
                "  []() -> {\n"
                "    int b = 32;\n"
