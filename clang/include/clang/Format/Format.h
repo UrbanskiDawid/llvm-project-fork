@@ -2608,7 +2608,9 @@ struct FormatStyle {
   // Suported operator spacing options.
   enum SpaceBeforeAndAfterOperatorKind: int8_t
   {
-    /// Do not use.
+    /// Do not change.
+    SBAO_Leave,
+    /// Remove space before and after operators.
     SBAO_None,
     /// Use space before and after operators.
     SBAO_SpaceBeforeAndAfter

@@ -94,6 +94,7 @@ template <>
 struct ScalarEnumerationTraits<FormatStyle::SpaceBeforeAndAfterOperatorKind> {
   static void enumeration(IO &IO,
                           FormatStyle::SpaceBeforeAndAfterOperatorKind &Value) {
+    IO.enumCase(Value, "Leave", FormatStyle::SBAO_Leave);
     IO.enumCase(Value, "None", FormatStyle::SBAO_None);
     IO.enumCase(Value, "SpaceBeforeAndAfter", FormatStyle::SBAO_SpaceBeforeAndAfter);
   }
@@ -2230,7 +2231,7 @@ public:
           SmallVectorImpl<AnnotatedLine *> &AnnotatedLines,
           FormatTokenLexer &Tokens) override {
 
-    llvm::errs() << "InsertSpaceBeforeAndAfterOperator enabled\n";
+    LLVM_DEBUG( llvm::errs() << "InsertSpaceBeforeAndAfterOperator enabled\n" );
 
     AffectedRangeMgr.computeAffectedLines(AnnotatedLines);
     tooling::Replacements Result;
@@ -2251,21 +2252,22 @@ private:
            FormatTok;
            FormatTok = FormatTok->Next)
       {
-//isUnaryOperator
+        //EDAWURB: add more options (no spaces? spaces only? spaces before and after?)
+        //isUnaryOperator
         if( FormatTok->isOneOf(
           //== (from TokenKinds.def)
-          tok::ampequal,//&=
-          tok::starequal,//*=
-          tok::plusequal,//+=
-          tok::minusequal,//-=
+          tok::ampequal,    //&=
+          tok::starequal,   //*=
+          tok::plusequal,   //+=
+          tok::minusequal,  //-=
           tok::exclaimequal,//!=
-          tok::slashequal,///=
+          tok::slashequal,  ///=
           tok::percentequal,//%=
-          tok::lessequal,//<=
+          tok::lessequal,   //<=
           tok::greaterequal,//>=
-          tok::equalequal,//==
-          tok::caretequal,//^=
-          tok::pipeequal//|=
+          tok::equalequal,  //==
+          tok::caretequal,  //^=
+          tok::pipeequal    //|=
           ) )
         {
           insertSpacesArroundToken(FormatTok, Result);
@@ -2276,38 +2278,28 @@ private:
 
   void insertSpacesArroundToken(format::FormatToken *FormatTok, tooling::Replacements &Result) {
 
-        bool SpaceBefore = FormatTok->hasWhitespaceBefore();
-        bool SpaceAfter = FormatTok->Next->hasWhitespaceBefore();
-    llvm::errs()<< "insertSpacesArroundToken: before:"<< SpaceBefore<<",after:"<<SpaceAfter <<"\n";
-    SpaceAfter=false;
-    SpaceBefore=false;
-        if(SpaceBefore && SpaceAfter)
+        LLVM_DEBUG( llvm::errs()<< "insertSpacesArroundToken: s:"<< FormatTok->TokenText.str()<<",e:"<<FormatTok->Next->TokenText.str()<<"\n" );
+
+        std::string spacer = "";
+
+        switch(Style.SpaceBeforeAndAfterOperator)
         {
-          llvm::errs()<< "insertSpacesArroundToken: skiped\n";
-          return;
+          case FormatStyle::SBAO_Leave: return;
+          case FormatStyle::SBAO_None: spacer = "";  break;
+          case FormatStyle::SBAO_SpaceBeforeAndAfter: spacer = " "; break;
         }
-        // getEndLoc is not reliably set during re-lexing, use text length
-        // instead.
-        SourceLocation Start = FormatTok->Tok.getLocation();
-        SourceLocation End = FormatTok->Tok.getLocation().getLocWithOffset(FormatTok->TokenText.size());
 
-        llvm::errs()<< "insertSpacesArroundToken: s:"<< Start.isValid()<<",e:"<<End.isValid()<<"\n";
-
-        //prefix
         auto prefixSR = CharSourceRange::getCharRange(
           FormatTok->WhitespaceRange.getBegin(),
           FormatTok->Tok.getLocation()
         );
-        std::string prefixText = std::string("dupa>");
-        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), prefixSR, prefixText)));
-
-        //suffix
         auto suffixSR = CharSourceRange::getCharRange(
           FormatTok->Tok.getLocation().getLocWithOffset(FormatTok->TokenText.size()),
           FormatTok->Next->Tok.getLocation()
         );
-        std::string suffixText = std::string("<dupa");
-        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), suffixSR, suffixText)));
+
+        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), prefixSR, spacer)));
+        cantFail(Result.add(tooling::Replacement(Env.getSourceManager(), suffixSR, spacer)));
   }
 };
 
@@ -3414,8 +3406,8 @@ reformat(const FormatStyle &Style, StringRef Code,
     });
   }
 
-//EDAWURB
-  if (Style.SpaceBeforeAndAfterOperator != FormatStyle::SBAO_None){
+  //EDAWURB: adding formater
+  if (Style.SpaceBeforeAndAfterOperator != FormatStyle::SBAO_Leave){
     Passes.emplace_back([&](const Environment &Env) {
           return InsertSpaceBeforeAndAfterOperator(Env, Expanded)
               .process();

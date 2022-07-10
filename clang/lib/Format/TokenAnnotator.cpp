@@ -4140,6 +4140,18 @@ bool TokenAnnotator::spaceRequiredBefore(const AnnotatedLine &Line,
   if ((Right.is(TT_BinaryOperator) && !Left.is(tok::l_paren)) ||
       (Left.isOneOf(TT_BinaryOperator, TT_ConditionalExpr) &&
        !Right.is(tok::r_paren))) {
+
+    if(Style.SpaceBeforeAndAfterOperator != FormatStyle::SBAO_Leave)
+    {
+      //EDAWURB: patching, this part is adding spaces around operators - same as SpaceBeforeAndAfterOperator
+      if(Right.isOneOf(tok::equalequal, tok::plusequal)
+          ||
+        Left.isOneOf(tok::equalequal, tok::plusequal))
+      {
+        LLVM_DEBUG( llvm::errs()<<">> "<<Left.TokenText.str() <<" VS "<<Right.TokenText.str() <<" << (patching)\n" );
+        return false;
+      }
+    }
     return true;
   }
   if (Right.is(TT_TemplateOpener) && Left.is(tok::r_paren) &&

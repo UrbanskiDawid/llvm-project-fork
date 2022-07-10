@@ -3162,6 +3162,14 @@ the configuration (without a prefix: ``Auto``).
   Adding spaces before and after operatos.
   Possible values:
 
+  * ``SBAO_Leave`` (in configuration: ``Leave``)
+    Dont change any operators.
+    .. code-block:: c++
+      before:
+       a==b;  a == b
+      after:
+       a==b;  a == b
+
   * ``SBAO_None`` (in configuration: ``None``)
     Dont change any operators.
     .. code-block:: c++
